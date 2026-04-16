@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Esta clase representa la pantalla de LOGIN
 // Extiende de StatelessWidget, por que necesitamos maneja datos dinamicos
@@ -103,15 +104,27 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity, // Hace el botón ancho completo
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       // Aqui ira la logica para iniciar sesion
                       if (_formKey.currentState!.validate()) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        try {
+                          await FirebaseAuth.instance.signInWithEmailAndPassword(
+                            email: emailController.text.trim(), 
+                            password: passwordController.text.trim(),
+                          );
+
+                          //Si el login es correcto, que lo mande al Home
+                          //Hasta el momento solo mostrara un mensaje
+                          ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Validación correcta'),
+                            content: Text('Validación correcta, Bienvenido'),
                           ),
                         );
-                        //Aqui implementare el codigo o logica de Firebase Auth
+                        } on FirebaseAuthException catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Correo o contraseña incorrectos')),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(

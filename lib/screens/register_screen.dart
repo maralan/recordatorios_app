@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -131,15 +133,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton( //Aqui ejecutaremos la validacion del formulario
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Registro válido'),
-                          ),
-                        );
+                    onPressed: () async {
+                      if (_formKey.currentState!.validate()) { //Validamos el formulario completo
+                        try {
+                          //Ceamos usuario en Firebase Auth
+                          UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword( 
+                            email: emailController.text.trim(), 
+                            password: passwordController.text.trim(),
+                          );
+                          // Guardamos el perfil en Firestore
+                          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+                            'uid': userCredential.user!.uid,
+                            'email': emailController.text.trim(),
+                            'displayName': 'Usuario Nuevo',
+                            'displayImage': '',
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar( //Mensaje de exito
+                            const SnackBar(content: Text('¡Registro exitoso en la nube!')),
+                          );
+                          Navigator.pop(context); //Regresaa al login
+                        } on FirebaseAuthException catch (e) {
+                          String  mensaje = 'Error al registrar'; //Mensaje por defecto
+                          //Errores especificos de Firebase
+                          if (e.code == 'email-already-in-use') mensaje = 'El correo ya está en uso';
+                          if (e.code == 'invalid-email') mensaje = 'Correo inválido';
+                          if (e.code == 'weak-password') mensaje = 'Contraseña muy débil';
+                          //Mostrar error
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(mensaje))
+                          );
+                        } catch (e) {
+                          print(e); //Para debugear otros errores
+                        }
                       }
                     },
+                    //Estilo del boton
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green, //color de fondo
                       foregroundColor: Colors.white,
