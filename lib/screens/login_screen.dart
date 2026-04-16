@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'register_screen.dart';
 
 // Esta clase representa la pantalla de LOGIN
 // Extiende de StatelessWidget, por que necesitamos maneja datos dinamicos
@@ -133,7 +134,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Text('¿No tienes cuenta?'),
                     TextButton(
                       onPressed: () {
-                        //Aqui implementare la navegaaciónde registro
+                        //Aqui implementare la navegación de registro
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterScreen(),
+                          ),
+                        );
                       },
                       child: const Text('Regístrate'),
                     ),
