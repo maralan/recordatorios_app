@@ -58,7 +58,7 @@ class _NoteScreenState extends State<NoteScreen> {
                 validator: (value) => (value == null || value.isEmpty) ? 'Ingresa contenido' : null,
               ),
               const SizedBox(height: 20),
-              
+
               SizedBox(
                 width: double.infinity,
                 height: 55, // Altura fija para mejor presencia
@@ -102,8 +102,6 @@ class _NoteScreenState extends State<NoteScreen> {
                   ),
                   // Estilo del boton
                   style: ElevatedButton.styleFrom(
-                    // Aquí puedes usar Colors.deepPurple como en tu ejemplo 
-                    // o el cambio de color dinámico que vimos antes:
                     backgroundColor: widget.note == null ? Colors.deepPurple : Colors.orange.shade700,
                     foregroundColor: Colors.white,
                     elevation: 5,
