@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:recordatorios_app/models/event_model.dart';
 import 'package:recordatorios_app/models/note_models.dart';
+import 'package:recordatorios_app/models/reminder_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -60,43 +61,85 @@ class FirestoreService {
   }
 
   // obtener datos de evento
-Stream<List<EventModel>> getEvents(String userId) {
-  return _db
-      .collection('users')
-      .doc(userId)
-      .collection('events')
-      .orderBy('startDate', descending: false)
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => EventModel.fromMap(doc.id, doc.data()))
-          .toList());
-}
+  Stream<List<EventModel>> getEvents(String userId) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('events')
+        .orderBy('startDate', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => EventModel.fromMap(doc.id, doc.data()))
+            .toList());
+  }
 
-//Actualiza evento
-Future<void> updateEvent(
-  String userId,
-  String eventId,
-  String title,
-  String description,
-) async {
-  await FirebaseFirestore.instance
-      .collection('users')
-      .doc(userId)
-      .collection('events')
-      .doc(eventId)
-      .update({
-    'title': title,
-    'description': description,
-  });
-}
+  //Actualiza evento
+  Future<void> updateEvent(
+    String userId,
+    String eventId,
+    String title,
+    String description,
+  ) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('events')
+        .doc(eventId)
+        .update({
+      'title': title,
+      'description': description,
+    });
+  }
 
-// eliminar evento
-Future<void> deleteEvent(String userId, String eventId) async {
+  // eliminar evento
+  Future<void> deleteEvent(String userId, String eventId) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('events')
+        .doc(eventId)
+        .delete();
+  }
+
+  // --------------- CRUD PARA RECORDATORIO --------------------------
+  // CREAR RECORDATORIO
+  Future<void> createReminder(ReminderModel reminder, String userId) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('reminders')
+        .add(reminder.toMap());
+  }
+
+  // OBTENER RECORDATORIOS
+  Stream<List<ReminderModel>> getReminders(String userId) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('reminders')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ReminderModel.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  //ACTUALIZAR RECORATORIO
+  Future<void> updateReminder(String userId,  ReminderModel reminder,) async {
   await _db
       .collection('users')
       .doc(userId)
-      .collection('events')
-      .doc(eventId)
-      .delete();
+      .collection('reminders')
+      .doc(reminder.id)
+      .update(reminder.toMap());
 }
+
+  // ELIMINAR
+  Future<void> deleteReminder(String userId, String reminderId) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('reminders')
+        .doc(reminderId)
+        .delete();
+  }
 }

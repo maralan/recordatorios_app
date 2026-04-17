@@ -2,9 +2,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'note_screen.dart';
 import 'event_screen.dart';
+import 'reminder_screen.dart';
+import 'profile_screen.dart';
 import 'package:recordatorios_app/helpers/services/firestore_service.dart';
 import 'package:recordatorios_app/models/note_models.dart';
 import 'package:recordatorios_app/models/event_model.dart';
+import 'package:recordatorios_app/models/reminder_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,10 +25,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Mis Recordatorios'),
+          actions: [ //Boton de Perfilde usuario
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () {
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileScreen(),
+                  ),
+                );
+              }
+            )
+          ],
           bottom: TabBar(
             onTap: (index) {
               setState(() {
@@ -35,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
             tabs: const [
               Tab(text: "Notas"),
               Tab(text: "Eventos"),
+              Tab(text: "Recordatorio"),
             ],
           ),
         ),
@@ -42,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildNotes(),
             _buildEvents(),
+            _buildReminders(),
           ],
         ),
         floatingActionButton: FloatingActionButton(
@@ -51,10 +69,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const NoteScreen()),
               );
-            } else {
+            } else if (currentIndex == 1) {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const EventScreen()),
+              );
+            } else {
+              Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (_) => const ReminderScreen()),
+                
               );
             }
           },
@@ -71,6 +95,10 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!snapshot.hasData) return const CircularProgressIndicator();
 
         final notes = snapshot.data!;
+
+        if (notes.isEmpty) {
+          return const Center(child: Text("No hay notas"));
+        }
 
         return ListView.builder(
           itemCount: notes.length,
@@ -111,6 +139,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final events = snapshot.data!;
 
+        if (events.isEmpty) {
+          return const Center(child: Text("No hay eventos"));
+        }
+
         return ListView.builder(
           itemCount: events.length,
           itemBuilder: (_, i) {
@@ -134,6 +166,56 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.delete),
                 onPressed: () =>
                     firestoreService.deleteEvent(user!.uid, event.id),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // RECORDATORIOS
+  Widget _buildReminders() {
+    return StreamBuilder<List<ReminderModel>>(
+      stream: firestoreService.getReminders(user!.uid),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final reminders = snapshot.data!;
+
+        if (reminders.isEmpty) {
+          return const Center(child: Text("No hay recordatorios"));
+        }
+
+        return ListView.builder(
+          itemCount: reminders.length,
+          itemBuilder: (_, i) {
+            final reminder = reminders[i];
+
+            return ListTile(
+              leading: const Icon(Icons.alarm, color: Colors.deepPurple),
+              title: const Text("Recordatorio"),
+              subtitle: Text(reminder.scheduledAt.toString()),
+
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ReminderScreen(reminder: reminder),
+                  ),
+                );
+              },
+
+              trailing: IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () {
+                  firestoreService.deleteReminder(
+                    user!.uid,
+                    reminder.id,
+                  );
+                },
               ),
             );
           },

@@ -109,6 +109,14 @@ class _EventScreenState extends State<EventScreen> {
                           title: 'Evento creado',
                           body: titleController.text,
                         );
+
+                        await NotificationService.scheduleNotification(
+                          id: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 1, 
+                          title: 'Recordatorio de evento', 
+                          body: titleController.text, 
+                          scheduledDate: DateTime.now().add(const Duration(seconds: 10))
+                        );
+
                       }
                       if (mounted) {
                         Navigator.pop(context);
