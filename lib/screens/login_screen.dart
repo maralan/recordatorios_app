@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'home_screen.dart';
 
 // Esta clase representa la pantalla de LOGIN
 // Extiende de StatelessWidget, por que necesitamos maneja datos dinamicos
@@ -114,12 +115,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
 
                           //Si el login es correcto, que lo mande al Home
-                          //Hasta el momento solo mostrara un mensaje
-                          ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Validación correcta, Bienvenido'),
-                          ),
-                        );
+                          //Usamos pushReplacement para que el usuario no pueda volver al Login dandole atras
+                          if (mounted) {
+                            Navigator.pushReplacement(
+                              context, 
+                              MaterialPageRoute(
+                                builder: (context) => const HomeScreen(),
+                              ),
+                            );
+                          }
                         } on FirebaseAuthException catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Correo o contraseña incorrectos')),
