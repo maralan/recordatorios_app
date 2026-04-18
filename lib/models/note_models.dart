@@ -1,17 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NoteModel {
-  String id;
-  String title;
-  String content;
-  bool pinned;
-  DateTime createdAt;
+  final String id;
+  final String title;
+  final String content;
+  final bool pinned;
+  final DateTime createdAt;
 
   NoteModel({
     required this.id,
     required this.title,
     required this.content,
-    required this.pinned,
+    this.pinned = false,
     required this.createdAt,
   });
 

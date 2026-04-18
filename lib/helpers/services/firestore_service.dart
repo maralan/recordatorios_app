@@ -22,6 +22,7 @@ class FirestoreService {
         .collection('users')
         .doc(userId)
         .collection('notes')
+        .orderBy('pinned', descending: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -79,8 +80,10 @@ class FirestoreService {
     String eventId,
     String title,
     String description,
+    DateTime startDate,
+    DateTime endDate,
   ) async {
-    await FirebaseFirestore.instance
+    await _db
         .collection('users')
         .doc(userId)
         .collection('events')
@@ -88,6 +91,8 @@ class FirestoreService {
         .update({
       'title': title,
       'description': description,
+      'startDate': startDate,
+      'endDate': endDate,
     });
   }
 

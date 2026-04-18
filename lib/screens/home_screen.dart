@@ -92,37 +92,99 @@ class _HomeScreenState extends State<HomeScreen> {
     return StreamBuilder<List<NoteModel>>(
       stream: firestoreService.getNotes(user!.uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const CircularProgressIndicator();
 
-        final notes = snapshot.data!;
+        //loading real
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        //error
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
+
+        final notes = snapshot.data ?? [];
 
         if (notes.isEmpty) {
           return const Center(child: Text("No hay notas"));
         }
 
         return ListView.builder(
+          padding: const EdgeInsets.all(10),
           itemCount: notes.length,
           itemBuilder: (_, i) {
             final note = notes[i];
 
-            return ListTile(
-              title: Text(note.title),
-              subtitle: Text(note.content),
+            return Card(
+              elevation: 3,
+              margin: const EdgeInsets.only(bottom: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                leading: Icon(
+                  note.pinned ? Icons.push_pin : Icons.note,
+                  color: note.pinned ? Colors.orange : Colors.deepPurple,
+                ),
 
-              // EDITAR NOTA
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => NoteScreen(note: note),
-                  ),
-                );
-              },
+                title: Text(
+                  note.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
 
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () =>
-                    firestoreService.deleteNote(user!.uid, note.id),
+                subtitle: Text(
+                  note.content,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                // EDITAR
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NoteScreen(note: note),
+                    ),
+                  );
+                },
+
+                // BOTONES
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // PIN
+                    IconButton(
+                      icon: Icon(
+                        note.pinned
+                            ? Icons.push_pin
+                            : Icons.push_pin_outlined,
+                        color: Colors.orange,
+                      ),
+                      onPressed: () {
+                        firestoreService.updateNote(
+                          user!.uid,
+                          NoteModel(
+                            id: note.id,
+                            title: note.title,
+                            content: note.content,
+                            pinned: !note.pinned,
+                            createdAt: note.createdAt,
+                          ),
+                        );
+                      },
+                    ),
+
+                    // ELIMINAR
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        firestoreService.deleteNote(user!.uid, note.id);
+                      },
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -135,9 +197,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return StreamBuilder<List<EventModel>>(
       stream: firestoreService.getEvents(user!.uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const CircularProgressIndicator();
+        if (snapshot.connectionState == ConnectionState.waiting){
+          return const Center(child: CircularProgressIndicator());
+        } 
 
-        final events = snapshot.data!;
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
+
+        final events = snapshot.data ?? [];
 
         if (events.isEmpty) {
           return const Center(child: Text("No hay eventos"));
@@ -148,26 +216,33 @@ class _HomeScreenState extends State<HomeScreen> {
           itemBuilder: (_, i) {
             final event = events[i];
 
-            return ListTile(
-              title: Text(event.title),
-              subtitle: Text(event.description),
+            return Card(
+              margin: const EdgeInsets.all(10),
+              child: ListTile(
+                leading: const Icon(Icons.event, color: Colors.deepPurple),
+                title: Text(event.title),
+                subtitle: Text(
+                  "${event.description}\nFecha: ${event.startDate.toLocal()}",
+                ),
 
-              // EDITAR EVENTO
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EventScreen(event: event),
-                  ),
-                );
-              },
+                // EDITAR EVENTO
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EventScreen(event: event),
+                    ),
+                  );
+                },
 
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () =>
-                    firestoreService.deleteEvent(user!.uid, event.id),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => {
+                      firestoreService.deleteEvent(user!.uid, event.id),
+                  },
+                ),
               ),
-            );
+            ); 
           },
         );
       },
@@ -179,11 +254,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return StreamBuilder<List<ReminderModel>>(
       stream: firestoreService.getReminders(user!.uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final reminders = snapshot.data!;
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
+
+        final reminders = snapshot.data ?? [];
 
         if (reminders.isEmpty) {
           return const Center(child: Text("No hay recordatorios"));
@@ -194,28 +273,31 @@ class _HomeScreenState extends State<HomeScreen> {
           itemBuilder: (_, i) {
             final reminder = reminders[i];
 
-            return ListTile(
-              leading: const Icon(Icons.alarm, color: Colors.deepPurple),
-              title: const Text("Recordatorio"),
-              subtitle: Text(reminder.scheduledAt.toString()),
+            return Card(
+              margin:const EdgeInsets.all(10),
+              child: ListTile(
+                leading: const Icon(Icons.alarm, color: Colors.deepPurple),
+                title: const Text("Recordatorio"),
+                subtitle: Text(reminder.scheduledAt.toString()),
 
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ReminderScreen(reminder: reminder),
-                  ),
-                );
-              },
-
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () {
-                  firestoreService.deleteReminder(
-                    user!.uid,
-                    reminder.id,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReminderScreen(reminder: reminder),
+                    ),
                   );
                 },
+
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () {
+                    firestoreService.deleteReminder(
+                      user!.uid,
+                      reminder.id,
+                    );
+                  },
+                ),
               ),
             );
           },
