@@ -66,71 +66,91 @@ class _EventScreenState extends State<EventScreen> {
                 decoration: const InputDecoration(labelText: 'Título'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Ingresa un titulo';
+                    return 'Ingresa un título';
                   }
                   return null;
-                }
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: descriptionController,
                 decoration: const InputDecoration(labelText: 'Descripción'),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    try {
-                      if (isEditing) {
-                        await _firestoreService.updateEvent(
-                          user.uid,
-                          widget.event!.id,
-                          titleController.text,
-                          descriptionController.text,
-                        );
-                        await NotificationService.showNotification( //notificacion
-                          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                          title: 'Evento actualizado', 
-                          body: titleController.text,
-                        );
-                      } else {
-                        final event = EventModel(
-                          id: '',
-                          title: titleController.text,
-                          description: descriptionController.text,
-                          startDate: DateTime.now(),
-                          endDate: DateTime.now(),
-                        );
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      try {
+                        if (isEditing) {
+                          // --- ACTUALIZAR EVENTO ---
+                          await _firestoreService.updateEvent(
+                            user.uid,
+                            widget.event!.id,
+                            titleController.text,
+                            descriptionController.text,
+                          );
 
-                        await _firestoreService.createEvent(event, user.uid);
+                          await NotificationService.showNotification(
+                            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                            title: 'Evento actualizado',
+                            body: titleController.text,
+                          );
+                        } else {
+                          // --- CREAR NUEVO EVENTO ---
+                          final event = EventModel(
+                            id: '',
+                            title: titleController.text,
+                            description: descriptionController.text,
+                            startDate: DateTime.now(),
+                            endDate: DateTime.now(),
+                          );
 
-                        await NotificationService.showNotification(
-                          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                          title: 'Evento creado',
-                          body: titleController.text,
-                        );
+                          await _firestoreService.createEvent(event, user.uid);
 
-                        await NotificationService.scheduleNotification(
-                          id: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 1, 
-                          title: 'Recordatorio de evento', 
-                          body: titleController.text, 
-                          scheduledDate: DateTime.now().add(const Duration(seconds: 10))
-                        );
+                          // Notificación inmediata
+                          await NotificationService.showNotification(
+                            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                            title: 'Evento creado',
+                            body: titleController.text,
+                          );
 
-                      }
-                      if (mounted) {
+                          // Notificación programada (Esto es lo que suele dar el error de ProGuard)
+                          await NotificationService.scheduleNotification(
+                            id: (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 1,
+                            title: 'Recordatorio de evento',
+                            body: titleController.text,
+                            scheduledDate: DateTime.now().add(const Duration(seconds: 10)),
+                          );
+                        }
+
+                        // --- VOLVER AL HOME ---
+                        if (!mounted) return;
                         Navigator.pop(context);
+                        
+                      } catch (e) {
+                        debugPrint("Error en EventScreen: $e");
+                        
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Error al guardar: $e"),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
                       }
-                    } catch (e) {
-                      print("Error real: $e");
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Error: $e")),
-                      );
                     }
-                  }
-                },
-                child: Text(isEditing ? 'Actualizar' : 'Guardar'),
+                  },
+                  child: Text(
+                    isEditing ? 'ACTUALIZAR' : 'GUARDAR',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               )
             ],
           ),
