@@ -11,95 +11,147 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-
-  final TextEditingController nameController = TextEditingController();
+  final nameController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    // Access the current authenticated user session
     final user = FirebaseAuth.instance.currentUser;
 
+    // Safety check: if the session is lost, display a placeholder
     if (user == null) {
       return const Scaffold(
         body: Center(child: Text("Sesión finalizada")),
       );
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perfil'),
-      ),
       body: FutureBuilder<DocumentSnapshot>(
+        // One-time fetch of the user's document from the 'users' collection
         future: FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get(),
         builder: (context, snapshot) {
-
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>?;
-
+          // Synchronize the controller with the data fetched from Firestore
           nameController.text = data?['displayName'] ?? '';
 
-          return Padding(
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
+                const SizedBox(height: 40),
 
-                const Icon(Icons.person, size: 100),
+                // AVATAR - Static icon for user representation
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.deepPurple,
+                  child: const Icon(Icons.person, size: 50, color: Colors.white),
+                ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 15),
 
-                // ✏️ EDITAR NOMBRE
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    border: OutlineInputBorder(),
+                Text(
+                  nameController.text,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
 
-                const SizedBox(height: 10),
-
-                Text(data?['email'] ?? ''),
+                Text(
+                  data?['email'] ?? '',
+                  style: const TextStyle(color: Colors.grey),
+                ),
 
                 const SizedBox(height: 30),
 
-                // 🔥 ACTUALIZAR PERFIL
-                ElevatedButton(
-                  onPressed: () async {
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .update({
-                      'displayName': nameController.text,
-                    });
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Perfil actualizado")),
-                    );
-                  },
-                  child: const Text('Actualizar perfil'),
+                // EDIT - Text field to modify user's display name
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: "Nombre",
+                    filled: true,
+                    fillColor: isDark ? Colors.grey[900] : Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
 
-                // 🔴 ELIMINAR CUENTA
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                // SAVE BUTTON - Performs an update operation on the user document
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      backgroundColor: Colors.deepPurple,
+                    ),
+                    onPressed: () async {
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .update({
+                        'displayName': nameController.text,
+                      });
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Perfil actualizado")),
+                        );
+                      }
+                    },
+                    child: const Text("Guardar cambios"),
                   ),
-                  onPressed: () async {
+                ),
 
-                    // 🔥 borrar datos de Firestore
+                const SizedBox(height: 20),
+
+                // LOGOUT - Clears session and resets the navigation stack
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.orange),
+                  title: const Text("Cerrar sesión"),
+                  onTap: () async {
+                    await FirebaseAuth.instance.signOut();
+
+                    if (!mounted) return;
+
+                    // pushAndRemoveUntil ensures the user cannot go back to the profile after logout
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const LoginScreen(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                ),
+
+                // DELETE - Removes user data and deletes the Auth account
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text("Eliminar cuenta"),
+                  onTap: () async {
+                    // Remove the record from Firestore database
                     await FirebaseFirestore.instance
                         .collection('users')
                         .doc(user.uid)
                         .delete();
 
-                    // 🔥 borrar usuario de auth
+                    // Remove the user from Firebase Authentication
                     await user.delete();
 
                     if (!mounted) return;
@@ -112,27 +164,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       (route) => false,
                     );
                   },
-                  child: const Text('Eliminar cuenta'),
-                ),
-
-                const SizedBox(height: 10),
-
-                // 🚪 LOGOUT
-                ElevatedButton(
-                  onPressed: () async {
-                    await FirebaseAuth.instance.signOut();
-
-                    if (!mounted) return;
-
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const LoginScreen(),
-                      ),
-                      (route) => false,
-                    );
-                  },
-                  child: const Text('Cerrar sesión'),
                 ),
               ],
             ),

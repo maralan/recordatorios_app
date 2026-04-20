@@ -1,165 +1,261 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'home_screen.dart';
+import 'dashboard_screen.dart';
 
-// Esta clase representa la pantalla de LOGIN
-// Extiende de StatelessWidget, por que necesitamos maneja datos dinamicos
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
-
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-
-  //Key del formulario para validar los campos
+  // GlobalKey used to manage and validate the form state
   final _formKey = GlobalKey<FormState>();
 
-  //Controladores para obtener valores de los inputs
+  // Controllers to capture input data from the text fields
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold( // Scaffold es la estructura base de la pantalla (layout principal)
-      appBar: AppBar( // Barra superior con el titulo
-        title: const Text('Login'),
-        centerTitle: true, // Centra el título
-      ),
-      body: SingleChildScrollView( // Permite hacer scroll si el teclado tapa elementos
-        child: Padding( // Padding agrega espacio alrededor de todo el contenido
-          padding: const EdgeInsets.all(20.0),
-          child: Form( 
-            key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction, //Forza  aqui se pueda ver los errores
-            child: Column( // Column organiza los elementos de forma vertical
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40),
-                const Text( // Título principal
-                  'Bienvenido',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+  // Displays a custom dialog to trigger the Firebase password reset flow
+  void _resetPassword() {
+    final TextEditingController resetEmailController = TextEditingController();
+    
+    // Auto-fill the email if the user already typed it in the login field
+    resetEmailController.text = emailController.text;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, 
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Column(
+            children: [
+              Icon(Icons.lock_reset_rounded, size: 60, color: Colors.blue),
+              SizedBox(height: 10),
+              Text(
+                "¿Olvidaste tu clave?",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Ingresa tu correo electrónico y te enviaremos un enlace para que recuperes el acceso a tu cuenta.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: resetEmailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Tu Correo',
+                  hintText: 'ejemplo@correo.com',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(height: 10),
+              ),
+            ],
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final email = resetEmailController.text.trim();
+
+                        // Basic validation before calling the Firebase service
+                        if (email.isEmpty || !email.contains('@')) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Ingresa un correo válido"),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                          return;
+                        }
+
+                        try {
+                          // Firebase Password Reset logic
+                          await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                          if (context.mounted) Navigator.pop(context); 
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("📧 Enlace enviado. ¡Revisa tu bandeja!"),
+                              backgroundColor: Colors.green,
+                              duration: Duration(seconds: 5),
+                            ),
+                          );
+                        } catch (e) {
+                          if (context.mounted) Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Error: No se encontró el usuario")),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text("Enviar Instrucciones", style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Login'),
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Form(
+            key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                const Icon(Icons.account_circle, size: 100, color: Colors.blue),
+                const SizedBox(height: 20),
+                const Text(
+                  'Bienvenido',
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                ),
                 const Text(
                   'Inicia sesión para continuar',
                   style: TextStyle(color: Colors.grey),
                 ),
-                const SizedBox(height: 30),
-                TextFormField( // Campo de texto para el correo
-                  controller: emailController, //Se manda a traer el controller
+                const SizedBox(height: 40),
+                
+                TextFormField(
+                  controller: emailController,
                   decoration: InputDecoration(
-                    labelText: 'Correo', // Texto guia dentro del campo
-                    prefixIcon: Icon(Icons.email), // Icono
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12), // Bordes redondeados
-                    ),
+                    labelText: 'Correo',
+                    prefixIcon: const Icon(Icons.email),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (value) { //Validamos
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu correo';
-                    } else if (!value.contains('@')) {
-                      return 'Correo inválido';
-                    } else {
-                      return null;
-                    }
-                  },
-                ),
-                const SizedBox(height: 16), // Espacio entre campos
-                TextFormField( // Campo de texto para la contraseña
-                controller: passwordController, //Mandamos a traer el controller
-                  obscureText: true, // Oculta el texto (modo contraseña)
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  validator: (value) { //Validamos
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu contraseña';
-                    }
-                    if (value.length < 8) {
-                      return 'Mínimo 8 caracteres';
-                    }
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Ingresa tu correo';
+                    if (!value.contains('@')) return 'Correo inválido';
                     return null;
                   },
                 ),
-                const SizedBox(height: 10),
-                Align( // Campo (ej: olvide contraseña)
+                const SizedBox(height: 16),
+                
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Contraseña',
+                    prefixIcon: const Icon(Icons.lock),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+                    if (value.length < 8) return 'Mínimo 8 caracteres';
+                    return null;
+                  },
+                ),
+                
+                Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
-                    child: const Text('¿Olvidaste tu contraseña?'),
+                    onPressed: _resetPassword,
+                    child: const Text(
+                      '¿Olvidaste tu contraseña?',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20), // Espacio antes del boton
-                SizedBox( // Boton para inicio de sesion
-                  width: double.infinity, // Hace el botón ancho completo
-                  height: 50,
+                
+                const SizedBox(height: 20),
+                
+                // Executes sign-in process with Firebase Auth
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
                   child: ElevatedButton(
                     onPressed: () async {
-                      // Aqui ira la logica para iniciar sesion
                       if (_formKey.currentState!.validate()) {
                         try {
                           await FirebaseAuth.instance.signInWithEmailAndPassword(
-                            email: emailController.text.trim(), 
+                            email: emailController.text.trim(),
                             password: passwordController.text.trim(),
                           );
-
-                          //Si el login es correcto, que lo mande al Home
-                          //Usamos pushReplacement para que el usuario no pueda volver al Login dandole atras
+                          // Navigates to Dashboard using pushReplacement to prevent going back to login
                           if (mounted) {
                             Navigator.pushReplacement(
-                              context, 
-                              MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
-                              ),
+                              context,
+                              MaterialPageRoute(builder: (_) => const DashboardScreen()),
                             );
                           }
-                        } on FirebaseAuthException catch (e) {
+                        } on FirebaseAuthException {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Correo o contraseña incorrectos')),
+                            const SnackBar(
+                              content: Text('Correo o contraseña incorrectos'),
+                              backgroundColor: Colors.orangeAccent,
+                            ),
                           );
                         }
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue, //COLOR DE FONDO
-                      foregroundColor: Colors.white, //Color del texto
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),                        
-                      ),
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text(
-                      'Iniciar sesión',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    child: const Text('Iniciar sesión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                const SizedBox(height: 20),
-                Row( // Campo de registro
+                
+                const SizedBox(height: 30),
+                
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text('¿No tienes cuenta?'),
                     TextButton(
                       onPressed: () {
-                        //Aqui implementare la navegación de registro
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ),
+                          MaterialPageRoute(builder: (context) => const RegisterScreen()),
                         );
                       },
-                      child: const Text('Regístrate'),
+                      child: const Text(
+                        'Regístrate',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),

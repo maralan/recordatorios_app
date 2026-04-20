@@ -4,111 +4,118 @@ import '../helpers/services/firestore_service.dart';
 import 'package:recordatorios_app/models/note_models.dart';
 
 class NoteScreen extends StatefulWidget {
-  final NoteModel? note; //parametros
-  const NoteScreen({super.key, this.note}); //contructor
+  final NoteModel? note;
+  // If a note is passed, the screen enters "Edit Mode"
+  const NoteScreen({super.key, this.note});
 
   @override
   State<NoteScreen> createState() => _NoteScreenState();
 }
 
 class _NoteScreenState extends State<NoteScreen> {
-
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController titleController = TextEditingController();
-  final TextEditingController contentController = TextEditingController();
-  final FirestoreService _firestoreService = FirestoreService();
+  final titleController = TextEditingController();
+  final contentController = TextEditingController();
+  final _firestoreService = FirestoreService();
 
-  //el initSaate se encaarga de rellenar los campos si vamos editar 
   @override
   void initState() {
     super.initState();
-    if (widget.note != null) { //Si 'widget.note' no es nulo, significa que venimos de la pantalla anterior con datos
+    // Pre-fill controllers if editing an existing note
+    if (widget.note != null) {
       titleController.text = widget.note!.title;
       contentController.text = widget.note!.content;
-    } 
+    }
+  }
+
+  // Handles both Create and Update operations in Firestore
+  Future<void> _saveNote() async {
+    if (_formKey.currentState!.validate()) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Map the current input data to the NoteModel
+      final note = NoteModel(
+        id: widget.note?.id ?? '',
+        title: titleController.text,
+        content: contentController.text,
+        pinned: widget.note?.pinned ?? false,
+        createdAt: widget.note?.createdAt ?? DateTime.now(),
+      );
+
+      // Logical switch: update if ID exists, otherwise create new entry
+      if (widget.note == null) {
+        await _firestoreService.createNote(note, user.uid);
+      } else {
+        await _firestoreService.updateNote(user.uid, note);
+      }
+
+      // Return to the previous screen after a successful operation
+      if (mounted) Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic styling based on the current app theme brightness
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isEditing = widget.note != null;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.note == null ? 'Nueva Nota' : 'Editar Nota'), //Cambiamos el titulo si es editar o crear
+        title: Text(isEditing ? "Editar Nota" : "Nueva Nota"),
         centerTitle: true,
       ),
+
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _saveNote,
+        icon: const Icon(Icons.save),
+        label: Text(isEditing ? "Actualizar" : "Guardar"),
+      ),
+
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-
+              // Title Input Field
               TextFormField(
                 controller: titleController,
-                decoration: const InputDecoration(labelText: 'Título'),
-                validator: (value) => (value == null || value.isEmpty) ? 'Ingresa un titulo' : null,
-              ),
-
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: contentController,
-                decoration: const InputDecoration(
-                  labelText: 'Contenido',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
-                maxLines: 4,
-                validator: (value) => (value == null || value.isEmpty) ? 'Ingresa contenido' : null,
+                decoration: InputDecoration(
+                  hintText: "Título",
+                  filled: true,
+                  fillColor: isDark ? Colors.grey[900] : Colors.grey[200],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                validator: (v) => v!.isEmpty ? "Ingresa título" : null,
               ),
+
               const SizedBox(height: 20),
 
-              SizedBox(
-                width: double.infinity,
-                height: 55, // Altura fija para mejor presencia
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      final user = FirebaseAuth.instance.currentUser;
-
-                      if (widget.note == null) { //Usaremos el condicional para determinar si e creara o editara
-                        final newNote = NoteModel( //Creara un anota
-                          id: '',
-                          title: titleController.text,
-                          content: contentController.text,
-                          pinned: false,
-                          createdAt: DateTime.now(),
-                        );
-                        await _firestoreService.createNote(newNote, user!.uid);
-                      } else { //editara una nota
-                        final updatedNote = NoteModel(
-                          id: widget.note!.id,
-                          title: titleController.text,
-                          content: contentController.text,
-                          pinned: widget.note!.pinned,
-                          createdAt: widget.note!.createdAt,
-                        );
-                        await _firestoreService.updateNote(user!.uid, updatedNote);
-                      }
-
-                      if (mounted) {
-                        Navigator.pop(context);
-                      }
-                    }
-                  },
-                  // Implementamos un icono dinammico
-                  icon: Icon(
-                    widget.note == null ? Icons.save : Icons.edit,
-                  ),
-                  label: Text(
-                    widget.note == null ? 'Guardar Nota' : 'Actualizar Nota',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  // Estilo del boton
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.note == null ? Colors.deepPurple : Colors.orange.shade700,
-                    foregroundColor: Colors.white,
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+              // Content Input Field - Expands to fill available vertical space
+              Expanded(
+                child: TextFormField(
+                  controller: contentController,
+                  maxLines: null, // Allows for unlimited line breaks
+                  expands: true,
+                  decoration: InputDecoration(
+                    hintText: "Escribe tu nota...",
+                    filled: true,
+                    fillColor: isDark ? Colors.grey[900] : Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
                     ),
                   ),
+                  validator: (v) => v!.isEmpty ? "Escribe algo" : null,
                 ),
               ),
             ],

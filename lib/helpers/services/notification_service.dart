@@ -1,13 +1,12 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
+
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
+  // INIT
   static Future<void> init() async {
-    tz.initializeTimeZones();
-
+    // Configures the default icon for Android notifications
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -16,63 +15,65 @@ class NotificationService {
 
     await _notifications.initialize(settings);
 
-    // PERMISO PARA ANDROID 13+
-    final androidImplementation =
-        _notifications.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    // Mandatory channel setup for Android 8.0 (Oreo) and higher
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'reminder_channel',
+      'Recordatorios',
+      description: 'Canal de recordatorios',
+      importance: Importance.max,
+    );
 
-    await androidImplementation?.requestNotificationsPermission();
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
+  // NOTIFICACIÓN INMEDIATA
   static Future<void> showNotification({
     required int id,
     required String title,
     required String body,
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'channel_id',
-      'Recordatorios',
-      importance: Importance.max,
-      priority: Priority.high,
+    // Defines visual and sound priority for the notification
+    const NotificationDetails details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'reminder_channel',
+        'Recordatorios',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
     );
-
-    const NotificationDetails details =
-        NotificationDetails(android: androidDetails);
 
     await _notifications.show(id, title, body, details);
   }
 
-  //notificacion programada
+  // NOTIFICACIÓN PROGRAMADA (SIN ERRORES)
   static Future<void> scheduleNotification({
     required int id,
     required String title,
     required String body,
     required DateTime scheduledDate,
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'channel_id',
-      'Recordatorios',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
+    final now = DateTime.now();
 
-    const NotificationDetails details =
-        NotificationDetails(android: androidDetails);
+    // Validates that the notification is set for a future time
+    if (scheduledDate.isBefore(now)) {
+      print("ERROR: fecha pasada");
+      return;
+    }
 
-    print("Programando notificación para: $scheduledDate");
+    final delay = scheduledDate.difference(now);
 
-    await _notifications.zonedSchedule(
-      id, 
-      title, 
-      body, 
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: null,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+    print("Se ejecutará en ${delay.inSeconds} segundos");
+
+    // Executes the notification after the calculated time difference
+    Future.delayed(delay, () async {
+      await showNotification(
+        id: id,
+        title: title,
+        body: body,
+      );
+    });
   }
 }

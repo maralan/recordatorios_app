@@ -14,7 +14,6 @@ class ReminderScreen extends StatefulWidget {
 }
 
 class _ReminderScreenState extends State<ReminderScreen> {
-  // 1. Variables de estado para fecha y hora
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
   
@@ -24,9 +23,9 @@ class _ReminderScreenState extends State<ReminderScreen> {
   @override
   void initState() {
     super.initState();
+    // Check if we are editing an existing reminder to initialize the state
     if (widget.reminder != null) {
       isEditing = true;
-      // Al editar, extraemos la fecha y la hora del objeto existente
       selectedDate = widget.reminder!.scheduledAt;
       selectedTime = TimeOfDay(
         hour: widget.reminder!.scheduledAt.hour,
@@ -46,82 +45,91 @@ class _ReminderScreenState extends State<ReminderScreen> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Visualización de la selección actual
-            Card(
-              elevation: 0,
-              color: Colors.deepPurple.withOpacity(0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(15),
-                child: Column(
-                  children: [
-                    Text(
-                      "Programado para:",
-                      style: TextStyle(color: Colors.deepPurple.shade700),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      "${selectedDate.day}/${selectedDate.month}/${selectedDate.year} a las ${selectedTime.format(context)}",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
+            // --- UI: VISUAL STATUS CARD ---
+            // Displays the current selection for date and time in a prominent way
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    "Programado para",
+                    style: TextStyle(fontSize: 14, color: Colors.deepPurple),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}\n${selectedTime.format(context)}",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ),
-            
-            const SizedBox(height: 20),
 
-            // BOTÓN: SELECCIONAR FECHA
-            ListTile(
-              leading: const Icon(Icons.calendar_today, color: Colors.deepPurple),
-              title: const Text("Cambiar Fecha"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 15),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: selectedDate,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() => selectedDate = picked);
-                }
-              },
+            const SizedBox(height: 25),
+
+            // --- DATE PICKER TRIGGER ---
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: const Icon(Icons.calendar_today, color: Colors.deepPurple),
+                title: const Text("Cambiar Fecha"),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 15),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(), // Prevents picking dates in the past
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) {
+                    setState(() => selectedDate = picked);
+                  }
+                },
+              ),
             ),
 
-            // BOTÓN: SELECCIONAR HORA
-            ListTile(
-              leading: const Icon(Icons.access_time, color: Colors.deepPurple),
-              title: const Text("Cambiar Hora"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 15),
-              onTap: () async {
-                final picked = await showTimePicker(
-                  context: context,
-                  initialTime: selectedTime,
-                );
-                if (picked != null) {
-                  setState(() => selectedTime = picked);
-                }
-              },
+            // --- TIME PICKER TRIGGER ---
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: const Icon(Icons.access_time, color: Colors.deepPurple),
+                title: const Text("Cambiar Hora"),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 15),
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: selectedTime,
+                  );
+                  if (picked != null) {
+                    setState(() => selectedTime = picked);
+                  }
+                },
+              ),
             ),
 
             const Spacer(),
 
-            // BOTÓN ACCIÓN (GUARDAR / ACTUALIZAR)
+            // --- SAVE / UPDATE ACTION ---
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 55,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
+                  foregroundColor: Colors.white, 
+                  elevation: 5,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () async {
                   if (user == null) return;
 
-                  // --- PASO CRUCIAL: COMBINAR FECHA Y HORA ---
+                  // Combine selected date and time into a single DateTime object
                   final scheduledDate = DateTime(
                     selectedDate.year,
                     selectedDate.month,
@@ -130,55 +138,62 @@ class _ReminderScreenState extends State<ReminderScreen> {
                     selectedTime.minute,
                   );
 
-                  // Validación simple: ¿La fecha es en el pasado?
-                  if (scheduledDate.isBefore(DateTime.now())) {
+                  // VALIDATION: Ensure the scheduled time is at least 5 seconds in the future
+                  if (scheduledDate.isBefore(DateTime.now().add(const Duration(seconds: 5)))) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("La hora debe ser futura")),
+                      const SnackBar(
+                        content: Text("Error: La hora debe ser futura"),
+                        backgroundColor: Colors.redAccent,
+                      ),
                     );
                     return;
                   }
 
-                  if (isEditing) {
-                    final updatedReminder = ReminderModel(
-                      id: widget.reminder!.id,
-                      scheduledAt: scheduledDate,
-                    );
+                  // Generate a unique ID for the notification based on current timestamp
+                  int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-                    await _firestoreService.updateReminder(user.uid, updatedReminder);
+                  try {
+                    if (isEditing) {
+                      final updatedReminder = ReminderModel(
+                        id: widget.reminder!.id,
+                        scheduledAt: scheduledDate,
+                      );
+                      await _firestoreService.updateReminder(user.uid, updatedReminder);
+                    } else {
+                      final reminder = ReminderModel(
+                        id: '',
+                        scheduledAt: scheduledDate,
+                      );
+                      await _firestoreService.createReminder(reminder, user.uid);
+                    }
+
+                    // --- NOTIFICATIONS FLOW ---
                     
+                    // 1. Instant Confirmation: Notify the user that the action was successful
                     await NotificationService.showNotification(
-                      id: 1,
-                      title: 'Recordatorio actualizado',
-                      body: 'Se cambió para el ${selectedTime.format(context)}',
-                    );
-                  } else {
-                    final reminder = ReminderModel(
-                      id: '',
-                      scheduledAt: scheduledDate,
+                      id: 999,
+                      title: '¡Guardado con éxito!',
+                      body: 'Tu recordatorio ha sido programado.',
                     );
 
-                    await _firestoreService.createReminder(reminder, user.uid);
+                    // 2. Scheduled Alert: Trigger the actual reminder at the chosen time
+                    await NotificationService.scheduleNotification(
+                      id: notificationId,
+                      title: '¡Recordatorio!',
+                      body: 'Es hora de tu actividad programada.',
+                      scheduledDate: scheduledDate,
+                    );
 
-                    await NotificationService.showNotification(
-                      id: 2,
-                      title: 'Recordatorio creado',
-                      body: 'Programado con éxito',
+                    if (!mounted) return;
+                    Navigator.pop(context); 
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Error al guardar: $e")),
                     );
                   }
-
-                  // Programar/Reprogramar la notificación real
-                  await NotificationService.scheduleNotification(
-                    id: 3,
-                    title: '¡Atención!',
-                    body: 'Tienes un recordatorio pendiente',
-                    scheduledDate: scheduledDate,
-                  );
-
-                  if (!mounted) return;
-                  Navigator.pop(context);
                 },
                 child: Text(
-                  isEditing ? "ACTUALIZAR" : "GUARDAR RECORDATORIO",
+                  isEditing ? "ACTUALIZAR RECORDATORIO" : "GUARDAR RECORDATORIO",
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),

@@ -13,6 +13,7 @@ class EventModel {
     required this.endDate,
   });
 
+  // Converts the model instance into a Map for Firestore storage
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -22,11 +23,13 @@ class EventModel {
     };
   }
 
+  // Creates a model instance from Firestore data and document ID
   factory EventModel.fromMap(String id, Map<String, dynamic> map) {
     return EventModel(
       id: id,
       title: map['title'] ?? '',
       description: map['description'] ?? '',
+      // Converts Firestore Timestamps back to Dart DateTime objects
       startDate: map['startDate'].toDate(),
       endDate: map['endDate'].toDate(),
     );

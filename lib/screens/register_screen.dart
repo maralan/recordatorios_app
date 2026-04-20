@@ -11,15 +11,15 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
 
-  //Key del formulario para validar todos los campos
+  // GlobalKey for form validation and state management
   final _formKey = GlobalKey<FormState>();
 
-  //Controladores para obtener valores escritos por el usuario
+  // Text controllers to retrieve user input values
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
 
-  //Codigo para librar memoria cuando la panatalla se destruye
+  // Lifecycle method to release memory resources when the widget is destroyed
   @override
   void dispose() {
     emailController.dispose();
@@ -35,19 +35,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: const Text('Registro'),
         centerTitle: true,
       ),
-      body: SingleChildScrollView( //Scroll ppara evitar errores cuando aparece el teclado
+      body: SingleChildScrollView( 
+        // SingleChildScrollView prevents overflow errors when the keyboard appears
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-
-          child: Form( //Funcion Form que agrupara y permitira validar todos los input
+          child: Form( 
             key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction, //funciona para validar mientras el usuario escribe
+            // Validates fields as the user interacts with them
+            autovalidateMode: AutovalidateMode.onUserInteraction, 
             child: Column(
               children: [
-
                 const SizedBox(height: 40),
 
-                const Text( //Titulo principal
+                const Text( 
                   'Crear cuenta',
                   style: TextStyle(
                     fontSize: 28,
@@ -57,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 const SizedBox(height: 30),
 
-                // Campo para correo
+                // Email Input Field
                 TextFormField(
                   controller: emailController,
                   decoration: InputDecoration(
@@ -67,23 +67,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  validator: (value) { //Validacion del correo
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu correo';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Correo inválido';
-                    }
+                  validator: (value) { 
+                    if (value == null || value.isEmpty) return 'Ingresa tu correo';
+                    if (!value.contains('@')) return 'Correo inválido';
                     return null;
                   },
                 ),
 
                 const SizedBox(height: 16),
 
-                // campo para la contraseña
+                // Password Input Field
                 TextFormField(
                   controller: passwordController,
-                  obscureText: true, //metodo para ocultar el texto en (modo contraseña)
+                  obscureText: true, 
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     prefixIcon: const Icon(Icons.lock),
@@ -91,23 +87,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  validator: (value) { //codigo para validacion de error (contraseña)
-                    if (value == null || value.isEmpty) {
-                      return 'Ingresa tu contraseña';
-                    }
-                    if (value.length < 8) {
-                      return 'Mínimo 8 caracteres';
-                    }
+                  validator: (value) { 
+                    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+                    if (value.length < 8) return 'Mínimo 8 caracteres';
                     return null;
                   },
                 ),
 
                 const SizedBox(height: 16),
 
-                // campo para confirmar contraseña
+                // Confirm Password Input Field
                 TextFormField(
                   controller: confirmPasswordController,
-                  obscureText: true, //metodo para ocultar el texto en (modo contraseña)
+                  obscureText: true, 
                   decoration: InputDecoration(
                     labelText: 'Confirmar contraseña',
                     prefixIcon: const Icon(Icons.lock_outline),
@@ -115,10 +107,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  validator: (value) { //codigo para validacion (aqui se debe coincidir con el campo contraseña)
-                    if (value == null || value.isEmpty) {
-                      return 'Confirma tu contraseña';
-                    }
+                  validator: (value) { 
+                    if (value == null || value.isEmpty) return 'Confirma tu contraseña';
                     if (value != passwordController.text) {
                       return 'Las contraseñas no coinciden';
                     }
@@ -128,20 +118,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 const SizedBox(height: 20),
 
-                // Boton de registro
+                // Register Action Button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
-                  child: ElevatedButton( //Aqui ejecutaremos la validacion del formulario
+                  child: ElevatedButton( 
                     onPressed: () async {
-                      if (_formKey.currentState!.validate()) { //Validamos el formulario completo
+                      if (_formKey.currentState!.validate()) { 
                         try {
-                          //Ceamos usuario en Firebase Auth
+                          // 1. Create user in Firebase Authentication
                           UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword( 
                             email: emailController.text.trim(), 
                             password: passwordController.text.trim(),
                           );
-                          // Guardamos el perfil en Firestore
+                          
+                          // 2. Initialize user profile document in Firestore
                           await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
                             'uid': userCredential.user!.uid,
                             'email': emailController.text.trim(),
@@ -149,29 +140,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'displayImage': '',
                             'createdAt': FieldValue.serverTimestamp(),
                           });
+
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar( //Mensaje de exito
+
+                          ScaffoldMessenger.of(context).showSnackBar( 
                             const SnackBar(content: Text('¡Registro exitoso en la nube!')),
                           );
-                          Navigator.pop(context); //Regresaa al login
+                          
+                          // Returns to the login screen
+                          Navigator.pop(context); 
+
                         } on FirebaseAuthException catch (e) {
-                          String  mensaje = 'Error al registrar'; //Mensaje por defecto
-                          //Errores especificos de Firebase
+                          // Handling specific Firebase Auth exceptions
+                          String mensaje = 'Error al registrar'; 
                           if (e.code == 'email-already-in-use') mensaje = 'El correo ya está en uso';
                           if (e.code == 'invalid-email') mensaje = 'Correo inválido';
                           if (e.code == 'weak-password') mensaje = 'Contraseña muy débil';
-                          //Mostrar error
+                          
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(mensaje))
                           );
                         } catch (e) {
-                          print(e); //Para debugear otros errores
+                          debugPrint(e.toString()); 
                         }
                       }
                     },
-                    //Estilo del boton
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green, //color de fondo
+                      backgroundColor: Colors.green, 
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -183,20 +178,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 const SizedBox(height: 20),
 
-                //Codigo para volver/regresar al login
+                // Navigation back to Login
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text('¿Ya tienes cuenta?'),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); //funcion para regresar a login
+                        Navigator.pop(context); 
                       },
                       child: const Text('Inicia sesión'),
                     ),
                   ],
                 ),
-
               ],
             ),
           ),
